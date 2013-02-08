@@ -128,6 +128,7 @@ Cloud.prototype.start = function(fn){
               if (res.console) {
                 res.console.forEach(function (item) {
                   debug('console.%s: %j', item.level, item.args);
+                  self.emit('log', item.level, item.args);
                 });
               }
 

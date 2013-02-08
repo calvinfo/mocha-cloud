@@ -6,14 +6,14 @@
  */
 
 // Keep a reference to our window.console.
-var _console = window.console;
+var console = window.console;
 
 
 var logger = function (level) {
   return function () {
     this.buffer.push({ level : level, args : arguments });
 
-    if (_console && _console[level]) _console[level].apply(_console, arguments);
+    if (console && console[level]) console[level].apply(console, arguments);
   };
 };
 
@@ -22,7 +22,6 @@ var Console = module.exports = function Console () {
   this.buffer = [];
 };
 
-if (_console) Console.prototype = _console;
 
 Console.prototype.log   = logger('log');
 Console.prototype.warn  = logger('warn');
