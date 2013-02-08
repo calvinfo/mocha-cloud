@@ -229,13 +229,13 @@ require.register("mocha-cloud/console.js", function(module, exports, require){
 
 var console = window.console;
 
-module.exports = function Console () {
+var Console = module.exports = function Console () {
   this.buffer = [];
 };
 
 
 Console.prototype.log = function () {
-  this.buffer.push.apply(null, arguments);
+  this.buffer.push.apply(this.buffer, arguments);
 
   if (console) console.log.apply(console, arguments);
 };

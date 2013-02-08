@@ -5,17 +5,22 @@
 
 var console = window.console;
 
-module.exports = function Console () {
+var logger = function (type) {
+  return function () {
+    this.buffer.push(this.buffer, { type : type, args : arguments });
+
+    if (console && console[type]) console[type].apply(console, arguments);
+  };
+};
+
+var Console = module.exports = function Console () {
   this.buffer = [];
 };
 
-
-Console.prototype.log = function () {
-  this.buffer.push.apply(null, arguments);
-
-  if (console) console.log.apply(console, arguments);
-};
-
+Console.prototype.log   = logger('log');
+Console.prototype.warn  = logger('warn');
+Console.prototype.info  = logger('info');
+Console.prototype.error = logger('error');
 
 Console.prototype.read = function () {
   var buffer = this.buffer;

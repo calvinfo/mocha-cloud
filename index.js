@@ -120,19 +120,27 @@ Cloud.prototype.start = function(fn){
           if (err) return done(err);
 
           function wait() {
-            browser.eval('window.mochaResults', function(err, res){
+            browser.eval('{ results : window.mochaResults,' +
+                         '  console : console.read() }', function(err, res){
+
               if (err) return done(err);
 
-              if (!res) {
+              if (res.console) {
+                res.console.forEach(function (item) {
+                  debug('console.%s: %j', item.type, item.args);
+                });
+              }
+
+              if (!res.results) {
                 debug('waiting for results');
                 setTimeout(wait, 1000);
                 return;
               }
 
-              debug('results %j', res);
-              self.emit('end', conf, res);
+              debug('results %j', res.results);
+              self.emit('end', conf, res.results);
               browser.quit();
-              done(null, res);
+              done(null, res.results);
             });
           }
 
