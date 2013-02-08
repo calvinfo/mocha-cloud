@@ -1,12 +1,4 @@
 ;(function(){
-
-
-/**
- * hasOwnProperty.
- */
-
-var has = Object.prototype.hasOwnProperty;
-
 /**
  * Require the given path.
  *
@@ -15,32 +7,27 @@ var has = Object.prototype.hasOwnProperty;
  * @api public
  */
 
-function require(path, parent, orig) {
-  var resolved = require.resolve(path);
+function require(p, parent, orig){
+  var path = require.resolve(p)
+    , mod = require.modules[path];
 
   // lookup failed
-  if (null == resolved) {
-    orig = orig || path;
+  if (null == path) {
+    orig = orig || p;
     parent = parent || 'root';
-    var err = new Error('Failed to require "' + orig + '" from "' + parent + '"');
-    err.path = orig;
-    err.parent = parent;
-    err.require = true;
-    throw err;
+    throw new Error('failed to require "' + orig + '" from "' + parent + '"');
   }
-
-  var module = require.modules[resolved];
 
   // perform real require()
   // by invoking the module's
   // registered function
-  if (!module.exports) {
-    module.exports = {};
-    module.client = module.component = true;
-    module.call(this, module.exports, require.relative(resolved), module);
+  if (!mod.exports) {
+    mod.exports = {};
+    mod.client = mod.component = true;
+    mod.call(this, mod, mod.exports, require.relative(path));
   }
 
-  return module.exports;
+  return mod.exports;
 }
 
 /**
@@ -69,25 +56,19 @@ require.aliases = {};
  * @api private
  */
 
-require.resolve = function(path) {
-  var index = path + '/index.js';
+require.resolve = function(path){
+  var orig = path
+    , reg = path + '.js'
+    , regJSON = path + '.json'
+    , index = path + '/index.js'
+    , indexJSON = path + '/index.json';
 
-  var paths = [
-    path,
-    path + '.js',
-    path + '.json',
-    path + '/index.js',
-    path + '/index.json'
-  ];
-
-  for (var i = 0; i < paths.length; i++) {
-    var path = paths[i];
-    if (has.call(require.modules, path)) return path;
-  }
-
-  if (has.call(require.aliases, index)) {
-    return require.aliases[index];
-  }
+  return require.modules[reg] && reg
+    || require.modules[regJSON] && regJSON
+    || require.modules[index] && index
+    || require.modules[indexJSON] && indexJSON
+    || require.modules[orig] && orig
+    || require.aliases[index];
 };
 
 /**
@@ -119,15 +100,15 @@ require.normalize = function(curr, path) {
 };
 
 /**
- * Register module at `path` with callback `definition`.
+ * Register module at `path` with callback `fn`.
  *
  * @param {String} path
- * @param {Function} definition
+ * @param {Function} fn
  * @api private
  */
 
-require.register = function(path, definition) {
-  require.modules[path] = definition;
+require.register = function(path, fn){
+  require.modules[path] = fn;
 };
 
 /**
@@ -138,10 +119,9 @@ require.register = function(path, definition) {
  * @api private
  */
 
-require.alias = function(from, to) {
-  if (!has.call(require.modules, from)) {
-    throw new Error('Failed to alias "' + from + '", it does not exist');
-  }
+require.alias = function(from, to){
+  var fn = require.modules[from];
+  if (!fn) throw new Error('failed to alias "' + from + '", it does not exist');
   require.aliases[to] = from;
 };
 
@@ -160,7 +140,7 @@ require.relative = function(parent) {
    * lastIndexOf helper.
    */
 
-  function lastIndexOf(arr, obj) {
+  function lastIndexOf(arr, obj){
     var i = arr.length;
     while (i--) {
       if (arr[i] === obj) return i;
@@ -172,16 +152,17 @@ require.relative = function(parent) {
    * The relative require() itself.
    */
 
-  function localRequire(path) {
-    var resolved = localRequire.resolve(path);
-    return require(resolved, parent, path);
+  function fn(path){
+    var orig = path;
+    path = fn.resolve(path);
+    return require(path, parent, orig);
   }
 
   /**
    * Resolve relative to the parent.
    */
 
-  localRequire.resolve = function(path) {
+  fn.resolve = function(path){
     // resolve deps by returning
     // the dep in the nearest "deps"
     // directory
@@ -199,13 +180,14 @@ require.relative = function(parent) {
    * Check if module is defined at `path`.
    */
 
-  localRequire.exists = function(path) {
-    return has.call(require.modules, localRequire.resolve(path));
+  fn.exists = function(path){
+    return !! require.modules[fn.resolve(path)];
   };
 
-  return localRequire;
-};
-require.register("mocha-cloud/client.js", function(exports, require, module){
+  return fn;
+};require.register("mocha-cloud/client.js", function(module, exports, require){
+
+var Console = require('./console.js');
 
 /**
  * Listen to `runner` events to populate a global
@@ -220,6 +202,7 @@ require.register("mocha-cloud/client.js", function(exports, require, module){
 
 module.exports = function(runner){
   var failed = [];
+  window.console = new Console();
 
   runner.on('fail', function(test, err){
     failed.push({
@@ -238,12 +221,40 @@ module.exports = function(runner){
   });
 };
 });
-require.alias("mocha-cloud/client.js", "mocha-cloud/index.js");
+require.register("mocha-cloud/console.js", function(module, exports, require){
+/**
+ * Simple console to buffer headless log statements
+ * and then add them to a buffer to be read.
+ */
 
-if (typeof exports == "object") {
-  module.exports = require("mocha-cloud");
-} else if (typeof define == "function" && define.amd) {
-  define(require("mocha-cloud"));
-} else {
-  window["cloud"] = require("mocha-cloud");
-}})();
+var console = window.console;
+
+module.exports = function Console () {
+  this.buffer = [];
+};
+
+
+Console.prototype.log = function () {
+  this.buffer.push.apply(null, arguments);
+
+  if (console) console.log.apply(console, arguments);
+};
+
+
+Console.prototype.read = function () {
+  var buffer = this.buffer;
+  this.buffer = [];
+
+  return buffer;
+};
+
+
+
+});
+require.alias("mocha-cloud/client.js", "mocha-cloud/index.js");
+  if ("undefined" == typeof module) {
+    window.cloud = require("mocha-cloud");
+  } else {
+    module.exports = require("mocha-cloud");
+  }
+})();

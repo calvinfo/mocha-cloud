@@ -1,4 +1,6 @@
 
+var Console = require('./console.js');
+
 /**
  * Listen to `runner` events to populate a global
  * `.mochaResults` var which may be used by selenium
@@ -12,6 +14,7 @@
 
 module.exports = function(runner){
   var failed = [];
+  window.console = new Console();
 
   runner.on('fail', function(test, err){
     failed.push({
