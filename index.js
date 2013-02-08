@@ -127,7 +127,7 @@ Cloud.prototype.start = function(fn){
 
               if (res.console) {
                 res.console.forEach(function (item) {
-                  debug('console.%s: %j', item.type, item.args);
+                  debug('console.%s: %j', item.level, item.args);
                 });
               }
 
