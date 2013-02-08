@@ -7,7 +7,7 @@ var console = window.console;
 
 var logger = function (type) {
   return function () {
-    this.buffer.push(this.buffer, { type : type, args : arguments });
+    this.buffer.push({ type : type, args : arguments });
 
     if (console && console[type]) console[type].apply(console, arguments);
   };
